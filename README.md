@@ -4,11 +4,14 @@
 
 > 仅用于号码统计与组合娱乐，不构成投注建议，不提供购彩/充值/交易功能。请理性购彩，未满 18 周岁禁止购彩。
 
-## 线上地址（部署后）
+## 线上地址
 
-- 永久地址：`https://d6688.github.io/lottery-cloud/`
-- 手机安装：手机浏览器打开后「添加到主屏幕 / 安装应用」，可离线打开。
-- 数据更新：由 GitHub Actions 定时抓取，开奖后约 20-40 分钟内更新；页面顶部显示数据日期与期数。
+**https://d6688.github.io/lottery-cloud/**
+
+- 手机浏览器打开后「添加到主屏幕 / 安装应用」，可离线打开；不再依赖电脑、终端或临时隧道。
+- 仓库：https://github.com/D6688/lottery-cloud （公开仓库，GitHub Pages 免费托管）
+- 数据更新：GitHub Actions 在开奖后定时抓取，页面顶部显示数据日期与期数。
+- 已实际验证：HTTPS、PWA 安装入口、Service Worker、断网后可打开、手机 390px 布局无横向溢出。
 
 ## 重新设计要点
 
@@ -76,14 +79,15 @@ node tools/capture.sh   # 需要本地 Chrome；页面检查 + 截图
 
 当前：**1419 项断言通过**，覆盖快照合法性、冷热统计、5 种策略、结构约束、复式/胆拖注数、中奖奖级、导入合并、PWA/页面检查。
 
-## 部署（由代理执行，需要仓库授权）
+## 部署与维护
 
-代码已经准备在一个本地 Git 仓库中。首次部署需要一次 GitHub 授权，二选一：
-
-1. **临时 token（推荐）**：在 GitHub 生成 classic token（勾选 `repo` + `workflow`，有效期 1 天），保存到项目根目录 `.deploy-token` 文件，代理读取后部署并删除该文件，之后你可立即在 GitHub 撤销 token。
-2. **gh 登录**：在本机终端执行 `brew install gh`，然后 `GH_CONFIG_DIR="$PWD/.gh" gh auth login`，把登录态放在项目目录内，代理即可创建仓库、推送并开启 Pages。
-
-部署完成后：创建 `D6688/lottery-cloud` 仓库、推送 main、开启 Pages、触发一次数据任务，验证公网 HTTPS、PWA 安装与数据更新。
+- 托管：GitHub Pages（Actions 构建，免费 HTTPS）。
+- 数据：`.github/workflows/update-data.yml`
+  - 每天 UTC 13:40 / 14:10（北京时间 21:40 / 22:10）自动抓取，覆盖开奖后约 20-40 分钟。
+  - 也支持在仓库 Actions 页面手动 `Run workflow`。
+  - 抓取失败会保留上一次成功数据；仍可通过页面「手动导入开奖数据」兜底。
+- 代码更新：推送到 `main` 会自动触发 Pages 部署。
+- 注意：GitHub Actions 的定时任务在仓库长期无活动时可能被暂停；到 Actions 页面重新启用/手动运行即可。
 
 ## 目录
 
