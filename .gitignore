@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 .deploy-token
 .gh/
+.deploy-token
+.deploy-sk-*
+.gh/
