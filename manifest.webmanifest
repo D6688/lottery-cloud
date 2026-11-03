@@ -1,0 +1,25 @@
+{
+  "name": "彩智 · 云端选号助手",
+  "short_name": "彩智",
+  "description": "双色球 / 大乐透冷热分析、智能组合参考、走势图与中奖核对，云端数据自动更新。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#070b14",
+  "theme_color": "#070b14",
+  "categories": ["utilities", "entertainment"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "智能选号", "short_name": "选号", "url": "./?tab=select", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "中奖核对", "short_name": "核对", "url": "./?action=check", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

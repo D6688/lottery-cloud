@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>彩智 · 云端选号助手</title>
+  <meta name="description" content="双色球 / 大乐透冷热分析、智能组合参考、走势图与中奖核对，云端数据自动更新，手机免电脑访问。" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#080c16" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="彩智" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand-row">
+        <div class="brand">
+          <div class="logo">彩</div>
+          <div class="brand-text">
+            <h1>彩智 <em>云端版</em></h1>
+            <p>冷热分析 · 智能组合参考</p>
+          </div>
+        </div>
+        <button type="button" class="icon-btn" id="refreshBtn" aria-label="刷新开奖数据" title="刷新数据">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3" /><path d="M20 4v7h-7" /></svg>
+        </button>
+      </div>
+      <div class="top-controls">
+        <div class="segmented" id="lotterySwitch">
+          <button type="button" data-key="ssq" class="active">双色球</button>
+          <button type="button" data-key="dlt">大乐透</button>
+        </div>
+        <button type="button" class="data-badge" id="dataBadge" title="查看数据说明">数据加载中…</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- ============================ 首页 ============================ -->
+      <section class="view active" id="view-home">
+        <div class="latest-card">
+          <div class="latest-head">
+            <div>
+              <span class="latest-label">最新开奖</span>
+              <b id="latestIssue">—</b>
+            </div>
+            <span class="latest-date" id="latestDate"></span>
+          </div>
+          <div class="ball-row latest-balls" id="latestBalls"></div>
+          <div class="latest-foot">
+            <span id="latestCount">—</span>
+            <span id="latestSource">—</span>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <button type="button" class="quick-btn" data-action="smart-one"><span>⚡</span>智能一注</button>
+          <button type="button" class="quick-btn" data-action="random-one"><span>🎲</span>随机一注</button>
+          <button type="button" class="quick-btn" data-action="check"><span>✅</span>中奖核对</button>
+        </div>
+
+        <div class="home-grid">
+          <div class="mini-card">
+            <div class="mini-head"><h3>热号</h3><span>近 30 期</span></div>
+            <div id="homeHot" class="mini-balls"></div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-head"><h3>冷号</h3><span>按遗漏</span></div>
+            <div id="homeCold" class="mini-balls"></div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="card-head">
+            <h2>最近开奖</h2>
+            <button type="button" class="text-btn" id="homeMore">冷热分析 ›</button>
+          </div>
+          <div id="recentDraws" class="recent-list"></div>
+        </div>
+
+        <div class="hint-card">
+          数据由云端定时更新，手机无需开电脑；历史冷热不代表未来概率，仅作组合参考。请理性购彩，未满 18 周岁禁止购彩。
+        </div>
+      </section>
+
+      <!-- ============================ 选号 ============================ -->
+      <section class="view" id="view-select">
+        <div class="section-card">
+          <div class="card-head">
+            <h2>选号策略</h2>
+            <span class="muted">近 30 期统计</span>
+          </div>
+          <div class="strategy-grid" id="strategyGrid"></div>
+        </div>
+
+        <div class="section-card">
+          <div class="card-head">
+            <h2>生成设置</h2>
+            <button type="button" class="text-btn" id="advancedToggle">高级设置</button>
+          </div>
+          <div class="params">
+            <div class="field">
+              <label for="noteCount">注数</label>
+              <select id="noteCount">
+                <option value="1">1 注</option>
+                <option value="3" selected>3 注</option>
+                <option value="5">5 注</option>
+                <option value="10">10 注</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>玩法</label>
+              <input type="text" value="单式（复式/胆拖在下方）" disabled />
+            </div>
+          </div>
+
+          <div id="advancedPanel" class="advanced-panel" hidden>
+            <div class="params">
+              <div class="field">
+                <label for="oddEven">奇偶比</label>
+                <select id="oddEven"></select>
+              </div>
+              <div class="field">
+                <label for="bigSmall">大小比</label>
+                <select id="bigSmall"></select>
+              </div>
+              <div class="field">
+                <label for="maxRun">连号限制</label>
+                <select id="maxRun">
+                  <option value="any">不限</option>
+                  <option value="1">禁止连号</option>
+                  <option value="2">最多 2 连</option>
+                  <option value="3">最多 3 连</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="sumMin">和值下限</label>
+                <input type="number" id="sumMin" min="0" placeholder="不限" />
+              </div>
+              <div class="field">
+                <label for="sumMax">和值上限</label>
+                <input type="number" id="sumMax" min="0" placeholder="不限" />
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="btn primary block" id="generateBtn">智能生成号码</button>
+          <div class="action-row">
+            <button type="button" class="btn ghost" id="randomBtn">随机选号</button>
+            <button type="button" class="btn ghost" id="compoundBtn">复式 / 胆拖</button>
+          </div>
+        </div>
+
+        <div class="section-card" id="resultsCard">
+          <div class="card-head">
+            <h2>推荐号码</h2>
+            <span class="muted" id="resultsMeta">尚未生成</span>
+          </div>
+          <div id="results" class="results"></div>
+        </div>
+      </section>
+
+      <!-- ============================ 走势 ============================ -->
+      <section class="view" id="view-trend">
+        <div class="segmented sub-tabs" id="trendTabs">
+          <button type="button" data-trend="analysis" class="active">冷热分析</button>
+          <button type="button" data-trend="matrix">号码分布</button>
+          <button type="button" data-trend="chart">和值趋势</button>
+        </div>
+
+        <div id="trendAnalysis" class="trend-panel">
+          <div class="section-card">
+            <div class="card-head"><h2>号码冷热</h2><span class="muted" id="analysisMeta"></span></div>
+            <div class="analysis-zone"><span class="zone-label">红球 / 前区</span><div class="heat-grid" id="redHeatmap"></div></div>
+            <div class="analysis-zone"><span class="zone-label">蓝球 / 后区</span><div class="heat-grid compact" id="blueHeatmap"></div></div>
+            <div class="legend">
+              <span><i class="swatch hot"></i>热号</span>
+              <span><i class="swatch warm"></i>温号</span>
+              <span><i class="swatch cold"></i>冷号</span>
+              <span>❄ 长期遗漏</span>
+            </div>
+          </div>
+          <div class="section-card">
+            <div class="card-head"><h2>热号 / 冷号</h2><span class="muted">近 30 期</span></div>
+            <div class="hotcold">
+              <div><h3>热号 TOP6</h3><div id="hotRank" class="rank-list"></div></div>
+              <div><h3>冷号 TOP6</h3><div id="coldRank" class="rank-list"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="trendMatrix" class="trend-panel" hidden>
+          <div class="section-card">
+            <div class="card-head"><h2>号码分布走势</h2><span class="muted" id="matrixMeta"></span></div>
+            <div class="params">
+              <div class="field">
+                <label for="matrixZone">号码区</label>
+                <select id="matrixZone"><option value="red">红球 / 前区</option><option value="blue">蓝球 / 后区</option></select>
+              </div>
+              <div class="field">
+                <label for="matrixWindow">期数</label>
+                <select id="matrixWindow"><option value="20">近 20 期</option><option value="30" selected>近 30 期</option><option value="50">近 50 期</option></select>
+              </div>
+            </div>
+            <div class="chart-scroll" id="matrixChart"></div>
+            <div class="chart-note">行 = 期号（最新在上），列 = 号码，底部数字 = 当前遗漏期数</div>
+          </div>
+        </div>
+
+        <div id="trendChart" class="trend-panel" hidden>
+          <div class="section-card">
+            <div class="card-head"><h2>和值走势</h2><span class="muted" id="sumMeta"></span></div>
+            <div class="chart-scroll" id="sumChart"></div>
+          </div>
+          <div class="section-card">
+            <div class="card-head"><h2>奇偶走势</h2><span class="muted" id="oddMeta"></span></div>
+            <div class="chart-scroll" id="oddChart"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ 我的 ============================ -->
+      <section class="view" id="view-mine">
+        <div class="profile-card">
+          <div class="profile-icon">彩</div>
+          <div class="profile-text">
+            <b>彩智 · 云端数据</b>
+            <span id="mineSub">收藏与追号只保存在本机</span>
+          </div>
+          <span class="version">v0.3 云端版</span>
+        </div>
+
+        <div class="section-card">
+          <div class="card-head"><h2>我的收藏</h2><span class="muted" id="favCount">0 注</span></div>
+          <div id="favList" class="fav-list"></div>
+        </div>
+
+        <div class="section-card">
+          <div class="card-head"><h2>追号计划</h2><span class="muted" id="planCount">0 个</span></div>
+          <div id="planList" class="plan-list"></div>
+        </div>
+
+        <div class="section-card">
+          <div class="card-head"><h2>云端数据</h2><span class="muted" id="dataStatus">—</span></div>
+          <div class="data-actions">
+            <button type="button" class="btn ghost block" id="refreshDataBtn">立即刷新开奖数据</button>
+            <button type="button" class="btn ghost block" id="importBtn">手动导入开奖数据</button>
+          </div>
+          <div class="chart-note">数据由 GitHub Actions 在开奖后定时更新；即使数据源暂时失败，也会保留上一次成功数据。</div>
+        </div>
+
+        <div class="section-card" id="installCard" hidden>
+          <button type="button" class="btn primary block" id="installBtn">安装到手机桌面</button>
+          <div class="chart-note">安装后可全屏打开，并支持离线查看。</div>
+        </div>
+
+        <div class="disclaimer">
+          <b>免责声明</b>
+          <p>本工具仅做号码统计与组合参考，开奖结果是独立随机事件，历史冷热不代表未来概率；不构成投注建议，不提供购彩、充值或交易功能。请理性购彩、量力而行，未满 18 周岁禁止购彩。</p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tabbar">
+      <button type="button" data-tab="home" class="active">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
+        <span>首页</span>
+      </button>
+      <button type="button" data-tab="select">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18" /></svg>
+        <span>选号</span>
+      </button>
+      <button type="button" data-tab="trend">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V4M16 19v-7M22 19H2" /></svg>
+        <span>走势</span>
+      </button>
+      <button type="button" data-tab="mine">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>
+        <span>我的</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ============================ 中奖核对 ============================ -->
+  <div class="sheet" id="checkSheet" hidden>
+    <div class="sheet-mask" data-close="checkSheet"></div>
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <h3>中奖核对</h3>
+        <button type="button" class="text-btn" data-close="checkSheet">关闭</button>
+      </div>
+      <div class="sheet-body">
+        <div class="field">
+          <label for="checkIssue">对比期号</label>
+          <select id="checkIssue"></select>
+        </div>
+        <div class="field">
+          <label for="checkInput" id="checkInputLabel">号码</label>
+          <input type="text" id="checkInput" inputmode="numeric" placeholder="01 05 12 18 23 29 07" />
+        </div>
+        <button type="button" class="btn primary block" id="checkBtn">核对中奖</button>
+        <div id="checkResult" class="check-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ 复式 / 胆拖 ============================ -->
+  <div class="sheet" id="compoundSheet" hidden>
+    <div class="sheet-mask" data-close="compoundSheet"></div>
+    <div class="sheet-panel tall">
+      <div class="sheet-head">
+        <h3>复式 / 胆拖</h3>
+        <button type="button" class="text-btn" data-close="compoundSheet">关闭</button>
+      </div>
+      <div class="sheet-body">
+        <div class="segmented" id="compoundMode">
+          <button type="button" data-mode="compound" class="active">复式</button>
+          <button type="button" data-mode="danTuo">胆拖</button>
+        </div>
+        <div id="compoundPickers" class="compound-pickers"></div>
+        <div class="compound-summary" id="compoundSummary"></div>
+        <div class="action-row">
+          <button type="button" class="btn primary" id="compoundGenerate">生成全部注</button>
+          <button type="button" class="btn ghost" id="compoundFavorite">收藏这套</button>
+        </div>
+        <div id="compoundResults" class="compound-results"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ 追号 ============================ -->
+  <div class="sheet" id="chaseSheet" hidden>
+    <div class="sheet-mask" data-close="chaseSheet"></div>
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <h3>创建追号计划</h3>
+        <button type="button" class="text-btn" data-close="chaseSheet">关闭</button>
+      </div>
+      <div class="sheet-body">
+        <div class="chart-note" id="chaseInfo"></div>
+        <div class="params">
+          <div class="field">
+            <label for="chaseIssues">追号期数</label>
+            <select id="chaseIssues">
+              <option value="5">5 期</option>
+              <option value="10" selected>10 期</option>
+              <option value="20">20 期</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="chaseMultiplier">每期倍数</label>
+            <select id="chaseMultiplier">
+              <option value="1" selected>1 倍</option>
+              <option value="2">2 倍</option>
+              <option value="3">3 倍</option>
+            </select>
+          </div>
+        </div>
+        <div class="chart-note" id="chasePreview"></div>
+        <button type="button" class="btn primary block" id="chaseConfirm">创建计划</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ 导入数据 ============================ -->
+  <div class="sheet" id="importSheet" hidden>
+    <div class="sheet-mask" data-close="importSheet"></div>
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <h3>手动导入开奖</h3>
+        <button type="button" class="text-btn" data-close="importSheet">关闭</button>
+      </div>
+      <div class="sheet-body">
+        <div class="chart-note" id="importHelp"></div>
+        <textarea id="importText" class="import-text" spellcheck="false" placeholder="每行一期：期号,日期,号码…"></textarea>
+        <div class="import-error" id="importError"></div>
+        <button type="button" class="btn primary block" id="importApply">导入并保存到本机</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="assets/snapshot.js"></script>
+  <script src="assets/data.js"></script>
+  <script src="assets/analyzer.js"></script>
+  <script src="assets/bets.js"></script>
+  <script src="assets/generator.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

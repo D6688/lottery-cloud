@@ -1,0 +1,58 @@
+name: Update draw data
+
+on:
+  schedule:
+    # GitHub Actions 使用 UTC；以下对应北京时间 21:40 / 22:10（开奖后半小时内）
+    - cron: '40 13 * * *'
+    - cron: '10 14 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch latest draws
+        run: node scripts/update-data.js
+
+      - name: Commit data changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/latest.json assets/snapshot.js
+          if git diff --cached --quiet; then
+            echo "没有新数据，跳过提交"
+          else
+            git commit -m "chore: update lottery data [skip ci]"
+            git push
+          fi
+
+      - name: Prepare static site
+        run: |
+          mkdir -p _site
+          cp -r index.html manifest.webmanifest service-worker.js assets data icons _site/
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

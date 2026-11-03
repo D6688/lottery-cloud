@@ -1,0 +1,14 @@
+{
+  "name": "caizhi-cloud",
+  "version": "0.3.0",
+  "private": true,
+  "description": "彩智 · 云端选号助手：手机 PWA，开奖数据云端自动更新",
+  "scripts": {
+    "start": "node server.js",
+    "serve": "node server.js",
+    "test": "node tests/test.js",
+    "update-data": "node scripts/update-data.js",
+    "icons": "python3 tools/make-icons.py",
+    "screenshots": "bash tools/capture.sh"
+  }
+}
