@@ -43,7 +43,7 @@ async function main() {
   const output = {
     app: 'caizhi',
     version: 1,
-    updatedAt: new Date().toISOString(),
+    updatedAt: '',
     sources: {},
     draws: {}
   };
@@ -72,6 +72,18 @@ async function main() {
     process.exit(0);
   }
 
+  const changed = !existing || !existing.draws ||
+    JSON.stringify(existing.draws) !== JSON.stringify(output.draws);
+
+  if (!changed) {
+    console.log('没有新的开奖数据，跳过文件更新（保持原更新时间）');
+    if (process.env.GITHUB_OUTPUT) {
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changed=false\n');
+    }
+    return;
+  }
+
+  output.updatedAt = new Date().toISOString();
   fs.mkdirSync(path.dirname(JSON_FILE), { recursive: true });
   fs.writeFileSync(JSON_FILE, JSON.stringify(output, null, 2) + '\n', 'utf8');
 
@@ -80,6 +92,9 @@ async function main() {
     'window.CAIZHI_SNAPSHOT = ' + JSON.stringify(output) + ';\n';
   fs.writeFileSync(SNAPSHOT_FILE, snapshot, 'utf8');
   console.log('已写入 data/latest.json 与 assets/snapshot.js');
+  if (process.env.GITHUB_OUTPUT) {
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changed=true\n');
+  }
 }
 
 main().catch((err) => {

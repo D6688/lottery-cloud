@@ -11,6 +11,10 @@
   var Bets = window.LotteryBets;
   var CONFIG = D.CONFIG;
   var KEYS = D.KEYS;
+  var DRAW_INFO = {
+    ssq: { days: [0, 2, 4], time: '21:15' },
+    dlt: { days: [1, 3, 6], time: '21:25' }
+  };
 
   var FAV_KEY = 'caizhi.cloud.favorites.v1';
   var PLAN_KEY = 'caizhi.cloud.plans.v1';
@@ -41,7 +45,10 @@
     compound: { red: [], blue: [], dan: [], tuo: [] },
     compoundBets: null,
     installPrompt: null,
-    offline: false
+    offline: false,
+    fetching: false,
+    lastCheckAt: 0,
+    loadedOnce: false
   };
 
   var toastTimer = null;
@@ -144,20 +151,37 @@
     var badge = $('dataBadge');
     var list = drawsFor(state.key);
     var latest = list[0];
+    var win = drawWindowInfo(state.key);
+    var liveNow = !!(win && win.inWindow) && !state.offline;
+
+    badge.classList.toggle('is-live', liveNow);
+    badge.classList.toggle('is-offline', state.offline);
+
     if (!latest) {
       badge.textContent = '暂无数据';
-      badge.classList.add('is-offline');
       return;
     }
     var date = latest.date ? latest.date.slice(5) : latest.issue;
     badge.textContent = '数据 ' + date + ' · ' + list.length + ' 期';
-    badge.classList.toggle('is-offline', state.offline);
-    badge.title = state.offline ? '当前离线数据' : ('来源：' + (live.sources[state.key] || '云端快照') + '，更新于 ' + (live.updatedAt || '未知'));
+    badge.title = state.offline
+      ? '当前离线数据，稍后自动重试'
+      : ('来源：' + (live.sources[state.key] || '云端快照') +
+        '，云端更新于 ' + (live.updatedAt ? new Date(live.updatedAt).toLocaleString('zh-CN', { hour12: false }) : '未知') +
+        (state.lastCheckAt ? '，本机检查于 ' + fmtClock(state.lastCheckAt) : ''));
   }
 
   function refreshData(manualTrigger) {
+    if (state.fetching) return Promise.resolve(false);
+    state.fetching = true;
     var btn = $('refreshBtn');
     if (manualTrigger) btn.classList.add('spin');
+    updateLiveStatus();
+
+    var prevKey = state.key;
+    var prevList = drawsFor(prevKey);
+    var prevIssue = prevList[0] ? prevList[0].issue : '';
+    var prevUpdated = live.updatedAt;
+
     return fetch('data/latest.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -166,23 +190,138 @@
       .then(function (json) {
         var next = normalizeLive(json);
         if (!next.draws.ssq.length && !next.draws.dlt.length) throw new Error('empty');
+
+        var nextList = next.draws[prevKey] || [];
+        var changed = next.updatedAt !== prevUpdated ||
+          (nextList[0] ? nextList[0].issue !== prevIssue : false);
+
         live = next;
         state.offline = false;
+        state.lastCheckAt = Date.now();
         rebuildDraws();
-        renderAll();
-        if (manualTrigger) toast('数据已更新');
+
+        if (!state.loadedOnce) {
+          renderAll();
+          state.loadedOnce = true;
+        } else if (changed) {
+          renderAll();
+          flashLatest();
+        } else {
+          renderHeader();
+          renderMine();
+          updateLiveStatus();
+        }
+
+        if (changed && !manualTrigger) {
+          var latest = drawsFor(prevKey)[0];
+          toast('开奖号码已更新' + (latest ? '：第 ' + latest.issue + ' 期' : ''));
+        }
+        if (manualTrigger) toast(changed ? '开奖数据已更新' : '已是最新数据');
         return true;
       })
       .catch(function () {
         state.offline = true;
+        state.lastCheckAt = Date.now();
         renderDataBadge();
+        updateLiveStatus();
         if (manualTrigger) toast('刷新失败，正在使用离线数据');
         return false;
       })
       .then(function (ok) {
+        state.fetching = false;
         if (manualTrigger) btn.classList.remove('spin');
+        updateLiveStatus();
         return ok;
       });
+  }
+
+  function fmtClock(ts) {
+    var d = new Date(ts);
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+  }
+
+  function drawWindowInfo(key) {
+    var info = DRAW_INFO[key];
+    if (!info) return null;
+    var now = new Date();
+    if (info.days.indexOf(now.getDay()) < 0) return null;
+    var hm = info.time.split(':');
+    var draw = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(hm[0]), Number(hm[1]), 0, 0);
+    var start = draw.getTime() - 15 * 60 * 1000;
+    var end = draw.getTime() + 120 * 60 * 1000;
+    return {
+      draw: draw,
+      start: start,
+      end: end,
+      inWindow: now.getTime() >= start && now.getTime() <= end
+    };
+  }
+
+  function nextDrawInfo(key) {
+    var info = DRAW_INFO[key];
+    if (!info) return null;
+    var now = new Date();
+    var names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    for (var i = 0; i < 8; i++) {
+      var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      if (info.days.indexOf(d.getDay()) < 0) continue;
+      var hm = info.time.split(':');
+      d.setHours(Number(hm[0]), Number(hm[1]), 0, 0);
+      if (d.getTime() > now.getTime()) {
+        var prefix = i === 0 ? '今天' : (i === 1 ? '明天' : names[d.getDay()]);
+        return { label: prefix + ' ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + info.time };
+      }
+    }
+    return null;
+  }
+
+  function updateLiveStatus() {
+    var bar = $('liveBar');
+    if (!bar) return;
+    var text = $('liveText');
+    var check = $('liveCheck');
+    var win = drawWindowInfo(state.key);
+    var liveNow = !!(win && win.inWindow) && !state.offline;
+
+    bar.classList.toggle('is-live', liveNow);
+    $('dataBadge').classList.toggle('is-live', liveNow);
+
+    if (state.fetching) {
+      text.textContent = '正在检查最新开奖数据…';
+    } else if (state.offline) {
+      text.textContent = '网络异常，使用离线数据，稍后自动重试';
+    } else if (liveNow) {
+      text.textContent = '开奖追踪中 · 每 20 秒自动检查';
+    } else {
+      var next = nextDrawInfo(state.key);
+      text.textContent = next ? '下期开奖：' + next.label : '等待下期开奖';
+    }
+    check.textContent = state.lastCheckAt ? '上次检查 ' + fmtClock(state.lastCheckAt) : '';
+  }
+
+  function flashLatest() {
+    var card = document.querySelector('.latest-card');
+    if (!card) return;
+    card.classList.remove('flash');
+    void card.offsetWidth;
+    card.classList.add('flash');
+    setTimeout(function () { card.classList.remove('flash'); }, 1600);
+  }
+
+  function startLiveTicker() {
+    setInterval(function () {
+      if (document.hidden) return;
+      updateLiveStatus();
+      var win = drawWindowInfo(state.key);
+      var interval = win && win.inWindow ? 20000 : 300000;
+      if (Date.now() - (state.lastCheckAt || 0) >= interval) refreshData(false);
+    }, 10000);
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) return;
+      updateLiveStatus();
+      if (Date.now() - (state.lastCheckAt || 0) >= 60000) refreshData(false);
+    });
   }
 
   /* ----------------------------- 顶栏 / 导航 ----------------------------- */
@@ -204,6 +343,7 @@
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (tab === 'trend') renderTrend();
+    updateLiveStatus();
   }
 
   function renderAll() {
@@ -212,6 +352,7 @@
     renderSelect();
     renderMine();
     if (state.tab === 'trend') renderTrend();
+    updateLiveStatus();
     state.trendDirty = true;
   }
 
@@ -693,7 +834,11 @@
     $('favCount').textContent = state.favorites.length + ' 注';
     $('planCount').textContent = state.plans.length + ' 个';
     $('mineSub').textContent = '收藏 ' + state.favorites.length + ' 注 · 追号 ' + state.plans.length + ' 个 · 仅存本机';
-    $('dataStatus').textContent = state.offline ? '离线数据' : (live.updatedAt ? new Date(live.updatedAt).toLocaleString('zh-CN', { hour12: false }) : '本地快照');
+    $('dataStatus').textContent = state.offline
+      ? '离线数据'
+      : (live.updatedAt
+        ? '更新 ' + (new Date(live.updatedAt).getMonth() + 1) + '/' + new Date(live.updatedAt).getDate() + ' ' + fmtClock(new Date(live.updatedAt).getTime())
+        : '本地快照');
 
     var list = $('favList');
     if (!state.favorites.length) {
@@ -1091,6 +1236,7 @@
     renderAll();
     switchTab(state.tab);
     refreshData(false);
+    startLiveTicker();
     initPWA();
     applyUrlParams();
   }

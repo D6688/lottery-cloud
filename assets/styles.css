@@ -318,6 +318,50 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
 .recent-item .balls .ball-sep { margin: 0 1px; }
 .recent-item .date { margin-left: auto; color: var(--muted-2); font-size: 9.5px; white-space: nowrap; }
 
+.live-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted-2);
+  flex: 0 0 auto;
+}
+.live-bar.is-live .live-dot {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 1.6s infinite;
+}
+.live-check { margin-left: auto; font-size: 9px; color: var(--muted-2); white-space: nowrap; }
+.data-badge.is-live { color: var(--green); border-color: rgba(47, 224, 168, 0.3); }
+.data-badge.is-live::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: 1px;
+  background: var(--green);
+  animation: pulse 1.6s infinite;
+}
+.latest-card.flash { animation: flash 1.5s ease; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes flash {
+  0%, 100% { box-shadow: var(--shadow); }
+  30% { box-shadow: 0 0 0 2px var(--gold), 0 0 36px rgba(255, 204, 102, 0.35); }
+}
+
 .hint-card {
   margin-top: 12px;
   padding: 12px 14px;

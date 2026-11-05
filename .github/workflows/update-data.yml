@@ -2,9 +2,11 @@ name: Update draw data
 
 on:
   schedule:
-    # GitHub Actions 使用 UTC；以下对应北京时间 21:40 / 22:10（开奖后半小时内）
-    - cron: '40 13 * * *'
-    - cron: '10 14 * * *'
+    # GitHub Actions 使用 UTC。北京时间 21:00-22:55 每 5 分钟检查一次（开奖窗口）
+    # 周一到周四、周六、周日（周五不开奖）：UTC 0-4,6 对应北京时间周一至周四、周六、周日
+    - cron: '*/5 13-14 * * 0-4,6'
+    # 北京时间 23:00 再补一次，处理晚到的结果/修正
+    - cron: '0 15 * * 0-4,6'
   workflow_dispatch:
 
 permissions:
@@ -22,6 +24,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -30,29 +33,37 @@ jobs:
           node-version: 20
 
       - name: Fetch latest draws
+        id: update
         run: node scripts/update-data.js
 
       - name: Commit data changes
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/latest.json assets/snapshot.js
           if git diff --cached --quiet; then
-            echo "没有新数据，跳过提交"
+            echo "没有新数据，跳过提交与部署"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "chore: update lottery data [skip ci]"
             git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Prepare static site
+        if: steps.commit.outputs.changed == 'true'
         run: |
           mkdir -p _site
           cp -r index.html manifest.webmanifest service-worker.js assets data icons _site/
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v5
+        if: steps.commit.outputs.changed == 'true'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.commit.outputs.changed == 'true'
         with:
           path: _site
       - id: deployment
+        if: steps.commit.outputs.changed == 'true'
         uses: actions/deploy-pages@v4
