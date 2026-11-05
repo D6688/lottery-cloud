@@ -315,7 +315,7 @@
       var win = drawWindowInfo(state.key);
       var interval = win && win.inWindow ? 20000 : 300000;
       if (Date.now() - (state.lastCheckAt || 0) >= interval) refreshData(false);
-    }, 10000);
+    }, 5000);
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) return;
