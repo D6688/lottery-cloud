@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-title" content="彩智" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
-  <link rel="stylesheet" href="assets/styles.css" />
+  <link rel="stylesheet" href="assets/styles.css?v=0.5.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -236,7 +236,7 @@
             <b>彩智 · 云端数据</b>
             <span id="mineSub">收藏与追号只保存在本机</span>
           </div>
-          <span class="version">v0.3 云端版</span>
+          <span class="version">v0.5 云端版</span>
         </div>
 
         <div class="section-card">
@@ -253,9 +253,10 @@
           <div class="card-head"><h2>云端数据</h2><span class="muted" id="dataStatus">—</span></div>
           <div class="data-actions">
             <button type="button" class="btn ghost block" id="refreshDataBtn">立即刷新开奖数据</button>
+            <button type="button" class="btn ghost block" id="forceUpdateBtn">清除缓存并更新版本</button>
             <button type="button" class="btn ghost block" id="importBtn">手动导入开奖数据</button>
           </div>
-          <div class="chart-note">数据由 GitHub Actions 在开奖后定时更新；即使数据源暂时失败，也会保留上一次成功数据。</div>
+          <div class="chart-note">开奖窗口内每 5 分钟抓取、页面每 20 秒自动检查；数据源暂时失败时会保留上一次成功数据。</div>
         </div>
 
         <div class="section-card" id="installCard" hidden>
@@ -390,11 +391,11 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="assets/snapshot.js"></script>
-  <script src="assets/data.js"></script>
-  <script src="assets/analyzer.js"></script>
-  <script src="assets/bets.js"></script>
-  <script src="assets/generator.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="assets/snapshot.js?v=0.5.0"></script>
+  <script src="assets/data.js?v=0.5.0"></script>
+  <script src="assets/analyzer.js?v=0.5.0"></script>
+  <script src="assets/bets.js?v=0.5.0"></script>
+  <script src="assets/generator.js?v=0.5.0"></script>
+  <script src="assets/app.js?v=0.5.0"></script>
 </body>
 </html>

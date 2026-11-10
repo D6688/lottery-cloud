@@ -1,19 +1,19 @@
 /* 彩智 · 云端选号助手 Service Worker */
 'use strict';
 
-const CACHE = 'caizhi-cloud-v0.3.0';
+const CACHE = 'caizhi-cloud-v0.5.0';
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './assets/styles.css',
-  './assets/data.js',
-  './assets/snapshot.js',
-  './assets/analyzer.js',
-  './assets/bets.js',
-  './assets/generator.js',
-  './assets/app.js',
+  './assets/styles.css?v=0.5.0',
+  './assets/data.js?v=0.5.0',
+  './assets/snapshot.js?v=0.5.0',
+  './assets/analyzer.js?v=0.5.0',
+  './assets/bets.js?v=0.5.0',
+  './assets/generator.js?v=0.5.0',
+  './assets/app.js?v=0.5.0',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
@@ -69,6 +69,22 @@ self.addEventListener('fetch', function (event) {
           return response;
         })
         .catch(function () { return caches.match('./index.html'); })
+    );
+    return;
+  }
+
+  // 页面脚本/样式：网络优先，保证发版后不会一直吃旧缓存
+  if (url.pathname.indexOf('/assets/') >= 0) {
+    event.respondWith(
+      fetch(request)
+        .then(function (response) {
+          if (response && response.ok && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(CACHE).then(function (cache) { cache.put(request, copy); });
+          }
+          return response;
+        })
+        .catch(function () { return caches.match(request); })
     );
     return;
   }

@@ -134,6 +134,15 @@ assert(D.mergeDraws(imported.draws, SNAP.draws.ssq, 300).length === SNAP.draws.s
 const messy = D.parseImport('ssq', '1,2026125,2026-11-01,01,05,12,18,23,29,07,364308228');
 assert(messy.draws.length === 1 && messy.draws[0].red.join() === '1,5,12,18,23,29', '兼容多余列导入');
 
+/* ============================ 数据源备用解析 ============================ */
+section('数据源备用解析');
+const Sources = require(path.join(root, 'scripts', 'sources.js'));
+const ssq500Sample = '<tbody><tr class="t_tr1"><!--<td>2</td>--><td>26128</td><td class="t_cfont2">05</td><td class="t_cfont2">06</td><td class="t_cfont2">10</td><td class="t_cfont2">25</td><td class="t_cfont2">27</td><td class="t_cfont2">30</td><td class="t_cfont4">11</td><td class="t_cfont4">&nbsp;</td><td>1,174,385,127</td><td>4</td><td>10,000,000</td><td>161</td><td>175,266</td><td>442,016,354</td><td>2026-11-08</td></tr></tbody>';
+const parsed500 = Sources.parseSsq500Html(ssq500Sample);
+assert(parsed500.length === 1, '500 双色球备用解析出行数');
+assert(parsed500[0].issue === '2026128' && parsed500[0].date === '2026-11-08', '500 双色球备用解析期号/日期');
+assert(parsed500[0].red.join(',') === '5,6,10,25,27,30' && parsed500[0].blue.join(',') === '11', '500 双色球备用解析号码');
+
 /* ============================ 汇总 ============================ */
 console.log('\n──────────────────────────────');
 console.log(failures.length === 0

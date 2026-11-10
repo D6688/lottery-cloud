@@ -37,7 +37,7 @@ function normalizeCount(count) {
 
 /* ----------------------------- 双色球 ----------------------------- */
 
-async function fetchSsq(count) {
+async function fetchSsqCwl(count) {
   const issueCount = normalizeCount(count);
   const url = 'https://www.cwl.gov.cn/cwl_admin/front/cwlkj/search/kjxx/findDrawNotice?name=ssq&issueCount=' + issueCount;
   const res = await fetch(url, {
@@ -66,6 +66,65 @@ async function fetchSsq(count) {
   }).filter(function (d) {
     return /^\d{7}$/.test(d.issue) && isValidDraw('ssq', d);
   });
+}
+
+function parseSsq500Html(html) {
+  const rows = Array.from(String(html).matchAll(/<tr class="t_tr1">([\s\S]*?)<\/tr>/g)).map(function (m) { return m[1]; });
+  const draws = [];
+
+  rows.forEach(function (row) {
+    const clean = row.replace(/<!--[\s\S]*?-->/g, '');
+    const cells = Array.from(clean.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)).map(function (m) {
+      return m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+    });
+    if (cells.length < 8) return;
+
+    let issue = cells[0].replace(/\D/g, '');
+    if (issue.length === 5) issue = '20' + issue;
+    if (!/^\d{7}$/.test(issue)) return;
+
+    const dateMatch = cells[cells.length - 1].match(/\d{4}-\d{2}-\d{2}/);
+    const draw = {
+      issue: issue,
+      date: dateMatch ? dateMatch[0] : '',
+      red: cells.slice(1, 7).map(Number).sort(asc),
+      blue: cells.slice(7, 8).map(Number).sort(asc)
+    };
+    if (isValidDraw('ssq', draw)) draws.push(draw);
+  });
+
+  return draws;
+}
+
+async function fetchSsq500(count) {
+  const issueCount = normalizeCount(count);
+  const url = 'https://datachart.500.com/ssq/history/newinc/history.php?limit=' + issueCount;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': UA, 'Referer': 'https://datachart.500.com/ssq/' },
+    signal: AbortSignal.timeout(12000)
+  });
+  if (!res.ok) throw new Error('双色球备用数据页 HTTP ' + res.status);
+
+  const buf = await res.arrayBuffer();
+  let html = new TextDecoder('utf-8').decode(buf);
+  if (html.indexOf('\ufffd') >= 0) html = new TextDecoder('gb18030').decode(buf);
+  return parseSsq500Html(html);
+}
+
+async function fetchSsq(count) {
+  const results = await Promise.allSettled([fetchSsqCwl(count), fetchSsq500(count)]);
+  const byIssue = new Map();
+  results.forEach(function (result) {
+    if (result.status === 'fulfilled') {
+      result.value.forEach(function (draw) {
+        if (!byIssue.has(draw.issue)) byIssue.set(draw.issue, draw);
+      });
+    } else {
+      console.warn('双色球数据源失败：', result.reason && result.reason.message);
+    }
+  });
+  if (!byIssue.size) throw new Error('双色球所有数据源均失败');
+  return Array.from(byIssue.values()).sort(function (a, b) { return b.issue.localeCompare(a.issue); });
 }
 
 /* ----------------------------- 大乐透 ----------------------------- */
@@ -112,7 +171,7 @@ async function fetchDlt(count) {
 }
 
 const SOURCES = {
-  ssq: { name: '中国福利彩票官网', fetch: fetchSsq, url: 'https://www.cwl.gov.cn/' },
+  ssq: { name: '福彩官网 + 500 彩票网', fetch: fetchSsq, url: 'https://www.cwl.gov.cn/' },
   dlt: { name: '500 彩票网 · 历史数据', fetch: fetchDlt, url: 'https://datachart.500.com/dlt/' }
 };
 
@@ -120,7 +179,10 @@ module.exports = {
   LIMITS: LIMITS,
   SOURCES: SOURCES,
   isValidDraw: isValidDraw,
+  parseSsq500Html: parseSsq500Html,
   parseDltHtml: parseDltHtml,
   fetchSsq: fetchSsq,
+  fetchSsqCwl: fetchSsqCwl,
+  fetchSsq500: fetchSsq500,
   fetchDlt: fetchDlt
 };

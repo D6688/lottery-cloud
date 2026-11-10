@@ -1186,6 +1186,8 @@
     $('chaseMultiplier').addEventListener('change', updateChasePreview);
     $('chaseConfirm').addEventListener('click', createPlan);
     $('importBtn').addEventListener('click', openImport);
+    var forceBtn = $('forceUpdateBtn');
+    if (forceBtn) forceBtn.addEventListener('click', forceUpdate);
     $('importApply').addEventListener('click', applyImport);
     $('refreshDataBtn').addEventListener('click', function () { refreshData(true); });
     $('installBtn').addEventListener('click', function () {
@@ -1197,12 +1199,42 @@
 
   /* ----------------------------- PWA ----------------------------- */
 
+  function forceUpdate() {
+    if (!window.confirm('将清除本机页面缓存并重新加载。收藏和追号保存在本机，不会丢失。')) return;
+    var reload = function () { location.reload(); };
+    var clearCaches = function () {
+      if (!('caches' in window)) return Promise.resolve();
+      return caches.keys().then(function (keys) {
+        return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+      });
+    };
+    var unregister = function () {
+      if (!('serviceWorker' in navigator)) return Promise.resolve();
+      return navigator.serviceWorker.getRegistrations().then(function (regs) {
+        return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+      });
+    };
+    unregister().then(clearCaches).then(reload).catch(reload);
+  }
+
   function initPWA() {
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
-          console.warn('[PWA] SW 注册失败', err);
-        });
+        navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' })
+          .then(function (reg) { return reg.update(); })
+          .then(function () {
+            if (navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage({ type: 'CHECK_UPDATE' });
+            }
+          })
+          .catch(function (err) {
+            console.warn('[PWA] SW 注册失败', err);
+          });
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (window.__caizhiControllerReloaded) return;
+        window.__caizhiControllerReloaded = true;
+        location.reload();
       });
     }
     window.addEventListener('beforeinstallprompt', function (event) {
